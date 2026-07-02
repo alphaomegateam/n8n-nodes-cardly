@@ -6,4 +6,10 @@ describe('OrderDescription', () => {
     const values = (op.options as any[]).map((o) => o.value);
     expect(values).toEqual(expect.arrayContaining(['place', 'preview', 'get', 'getMany']));
   });
+
+  it('declares a downloadPreview operation', () => {
+    const op = orderOperations.find((p) => p.name === 'operation')!;
+    const values = (op.options as any[]).map((o) => o.value);
+    expect(values).toContain('downloadPreview');
+  });
 });

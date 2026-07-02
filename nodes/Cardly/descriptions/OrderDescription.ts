@@ -9,16 +9,10 @@ export const orderOperations: INodeProperties[] = [
     displayOptions: { show: { resource: ['order'] } },
     options: [
       {
-        name: 'Place',
-        value: 'place',
-        action: 'Place a card order',
-        description: 'Place a real card order (test keys validate only)',
-      },
-      {
-        name: 'Preview',
-        value: 'preview',
-        action: 'Preview a card',
-        description: 'Generate a watermarked preview and cost/delivery estimate',
+        name: 'Download Preview PDF',
+        value: 'downloadPreview',
+        action: 'Download a preview PDF',
+        description: 'Generate a preview and download the card (and envelope) PDF as binary',
       },
       {
         name: 'Get',
@@ -31,6 +25,18 @@ export const orderOperations: INodeProperties[] = [
         value: 'getMany',
         action: 'Get many orders',
         description: 'List orders',
+      },
+      {
+        name: 'Place',
+        value: 'place',
+        action: 'Place a card order',
+        description: 'Place a real card order (test keys validate only)',
+      },
+      {
+        name: 'Preview',
+        value: 'preview',
+        action: 'Preview a card',
+        description: 'Generate a watermarked preview and cost/delivery estimate',
       },
     ],
     default: 'place',
@@ -47,7 +53,7 @@ const cardFields: INodeProperties[] = [
     required: true,
     description:
       'Artwork to use. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
-    displayOptions: { show: { resource: ['order'], operation: ['place', 'preview'] } },
+    displayOptions: { show: { resource: ['order'], operation: ['place', 'preview', 'downloadPreview'] } },
   },
   {
     displayName: 'Template ID',
@@ -55,7 +61,7 @@ const cardFields: INodeProperties[] = [
     type: 'string',
     default: '',
     description: 'Optional template ID to populate the card',
-    displayOptions: { show: { resource: ['order'], operation: ['place', 'preview'] } },
+    displayOptions: { show: { resource: ['order'], operation: ['place', 'preview', 'downloadPreview'] } },
   },
   {
     displayName: 'Recipient',
@@ -63,7 +69,7 @@ const cardFields: INodeProperties[] = [
     type: 'fixedCollection',
     default: {},
     typeOptions: { multipleValues: false },
-    displayOptions: { show: { resource: ['order'], operation: ['place', 'preview'] } },
+    displayOptions: { show: { resource: ['order'], operation: ['place', 'preview', 'downloadPreview'] } },
     options: [
       {
         name: 'value',
@@ -107,7 +113,7 @@ const cardFields: INodeProperties[] = [
     type: 'collection',
     placeholder: 'Add Field',
     default: {},
-    displayOptions: { show: { resource: ['order'], operation: ['place', 'preview'] } },
+    displayOptions: { show: { resource: ['order'], operation: ['place', 'preview', 'downloadPreview'] } },
     options: [
       {
         displayName: 'Message Pages',
@@ -187,7 +193,7 @@ const cardFields: INodeProperties[] = [
     type: 'fixedCollection',
     default: {},
     typeOptions: { multipleValues: false },
-    displayOptions: { show: { resource: ['order'], operation: ['place', 'preview'] } },
+    displayOptions: { show: { resource: ['order'], operation: ['place', 'preview', 'downloadPreview'] } },
     options: [
       {
         name: 'value',
@@ -241,6 +247,15 @@ const getFields: INodeProperties[] = [
     typeOptions: { minValue: 1 },
     displayOptions: { show: { resource: ['order'], operation: ['getMany'], returnAll: [false] } },
     description: 'Max number of results to return',
+  },
+  {
+    displayName: 'Put Output In Field',
+    name: 'binaryProperty',
+    type: 'string',
+    default: 'data',
+    required: true,
+    description: 'Name of the binary field to write the preview PDF(s) to (envelope, if any, uses "&lt;field&gt;Envelope")',
+    displayOptions: { show: { resource: ['order'], operation: ['downloadPreview'] } },
   },
 ];
 
