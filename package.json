@@ -1,5 +1,5 @@
 {
-  "name": "@alphaomegateam/n8n-nodes-cardly",
+  "name": "@alphaomega-team/n8n-nodes-cardly",
   "version": "0.1.0",
   "publishConfig": { "access": "public" },
   "description": "n8n community node for the Cardly API — send physical cards, sync contacts, and react to webhook events.",
