@@ -1,9 +1,16 @@
 {
   "name": "@alphaomega-team/n8n-nodes-cardly",
   "version": "0.1.0",
-  "publishConfig": { "access": "public" },
+  "publishConfig": {
+    "access": "public"
+  },
   "description": "n8n community node for the Cardly API — send physical cards, sync contacts, and react to webhook events.",
-  "keywords": ["n8n-community-node-package", "cardly", "direct-mail", "greeting-cards"],
+  "keywords": [
+    "n8n-community-node-package",
+    "cardly",
+    "direct-mail",
+    "greeting-cards"
+  ],
   "license": "MIT",
   "author": {
     "name": "Andrew Zweibel",
@@ -14,7 +21,9 @@
     "type": "git",
     "url": "git+https://github.com/alphaomegateam/n8n-nodes-cardly.git"
   },
-  "engines": { "node": ">=22.14.0" },
+  "engines": {
+    "node": ">=22.14.0"
+  },
   "main": "index.js",
   "scripts": {
     "clean": "rm -rf dist",
@@ -25,19 +34,25 @@
     "test": "jest",
     "prepublishOnly": "npm run build && eslint -c .eslintrc.prepublish.js nodes credentials package.json"
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "n8n": {
     "n8nNodesApiVersion": 1,
-    "credentials": ["dist/credentials/CardlyApi.credentials.js"],
+    "credentials": [
+      "dist/credentials/CardlyApi.credentials.js"
+    ],
     "nodes": [
       "dist/nodes/Cardly/Cardly.node.js",
       "dist/nodes/Cardly/CardlyTrigger.node.js"
     ]
   },
-  "peerDependencies": { "n8n-workflow": "*" },
+  "peerDependencies": {
+    "n8n-workflow": "*"
+  },
   "devDependencies": {
     "@types/jest": "^29.5.12",
-    "@types/node": "^18.19.0",
+    "@types/node": "^22.14.0",
     "@typescript-eslint/parser": "^7.18.0",
     "eslint": "^8.57.0",
     "eslint-plugin-n8n-nodes-base": "^1.16.3",
