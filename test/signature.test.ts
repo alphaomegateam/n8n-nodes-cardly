@@ -36,6 +36,20 @@ describe('extractRawProperty', () => {
     expect(extractRawProperty(raw, 'data')).toBe('{"nested":{"k":"}"},"s":"a{b}c"}');
   });
 
+  it('handles backslash-escaped quotes inside string values', () => {
+    const raw = '{"data":{"s":"a\\"b}c"},"timestamp":1}';
+    expect(extractRawProperty(raw, 'data')).toBe('{"s":"a\\"b}c"}');
+  });
+
+  it('matches the TOP-LEVEL key, not a same-named key nested in an earlier value', () => {
+    const raw = '{"metadata":{"data":{"decoy":1}},"data":{"real":true},"timestamp":1}';
+    expect(extractRawProperty(raw, 'data')).toBe('{"real":true}');
+  });
+
+  it('returns undefined when the top-level property is a scalar, not an object', () => {
+    expect(extractRawProperty('{"data":"scalar","timestamp":1}', 'data')).toBeUndefined();
+  });
+
   it('extracts an array-valued property', () => {
     const raw = '{"data":[1,2,{"x":3}],"timestamp":1}';
     expect(extractRawProperty(raw, 'data')).toBe('[1,2,{"x":3}]');
@@ -68,5 +82,14 @@ describe('verifyCardlySignature', () => {
   it('returns false when the signatures array is empty or missing', () => {
     expect(verifyCardlySignature(secret, timestamp, dataJson, [])).toBe(false);
     expect(verifyCardlySignature(secret, timestamp, dataJson, undefined as any)).toBe(false);
+  });
+
+  it('returns false when dataJson is empty (fail-closed)', () => {
+    expect(verifyCardlySignature(secret, timestamp, '', [good])).toBe(false);
+  });
+
+  it('does not throw and returns false on a signature entry of a different length', () => {
+    expect(verifyCardlySignature(secret, timestamp, dataJson, ['short', good])).toBe(true);
+    expect(verifyCardlySignature(secret, timestamp, dataJson, ['short'])).toBe(false);
   });
 });
