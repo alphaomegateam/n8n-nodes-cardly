@@ -40,4 +40,9 @@ describe('buildContactBody', () => {
     const emptyFields = buildContactBody({ ...base, email: 't@x.com', fields: {} } as any, 'create');
     expect(emptyFields.fields).toBeUndefined();
   });
+
+  it('update mode requires the same fields as create and needs no externalId/email', () => {
+    expect(() => buildContactBody({ ...base, firstName: '' } as any, 'update')).toThrow(/firstName/);
+    expect(() => buildContactBody(base as any, 'update')).not.toThrow();
+  });
 });

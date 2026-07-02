@@ -45,5 +45,14 @@ export async function execute(this: IExecuteFunctions, operation: string, i: num
     const limit = this.getNodeParameter('limit', i) as number;
     return unwrap(await cardlyApiRequest.call(this, 'GET', `/contact-lists/${listId}/contacts`, {}, { limit }))?.results ?? [];
   }
+  if (operation === 'update') {
+    const contactId = this.getNodeParameter('contactId', i) as string;
+    const body = buildContactBody(readContactInput(this, i), 'update');
+    return unwrap(await cardlyApiRequest.call(this, 'POST', `/contact-lists/${listId}/contacts/${contactId}`, body));
+  }
+  if (operation === 'delete') {
+    const contactId = this.getNodeParameter('contactId', i) as string;
+    return unwrap(await cardlyApiRequest.call(this, 'DELETE', `/contact-lists/${listId}/contacts/${contactId}`));
+  }
   throw new NodeOperationError(this.getNode(), `Unknown contact operation: ${operation}`);
 }

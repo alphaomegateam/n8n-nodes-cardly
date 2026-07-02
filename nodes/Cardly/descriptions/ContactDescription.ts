@@ -15,6 +15,11 @@ export const contactOperations: INodeProperties[] = [
         description: 'Add a contact (rejects duplicates by externalId/email)',
       },
       {
+        name: 'Delete',
+        value: 'delete',
+        action: 'Delete a contact',
+      },
+      {
         name: 'Find',
         value: 'find',
         action: 'Find a contact',
@@ -35,6 +40,11 @@ export const contactOperations: INodeProperties[] = [
         value: 'sync',
         action: 'Sync a contact',
         description: 'Create or update by externalId/email',
+      },
+      {
+        name: 'Update',
+        value: 'update',
+        action: 'Update a contact',
       },
     ],
     default: 'create',
@@ -149,7 +159,7 @@ export const contactFields: INodeProperties[] = [
     type: 'string',
     default: '',
     required: true,
-    displayOptions: { show: { resource: ['contact'], operation: ['get'] } },
+    displayOptions: { show: { resource: ['contact'], operation: ['get', 'update', 'delete'] } },
   },
   {
     displayName: 'Query',

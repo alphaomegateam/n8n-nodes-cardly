@@ -12,4 +12,10 @@ describe('ContactDescription', () => {
     const values = (op.options as any[]).map((o) => o.value);
     expect(values).toEqual(expect.arrayContaining(['get', 'getMany', 'find']));
   });
+
+  it('declares update and delete operations', () => {
+    const op = contactOperations.find((p) => p.name === 'operation')!;
+    const values = (op.options as any[]).map((o) => o.value);
+    expect(values).toEqual(expect.arrayContaining(['update', 'delete']));
+  });
 });
