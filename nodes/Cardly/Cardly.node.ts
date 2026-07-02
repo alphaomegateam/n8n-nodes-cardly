@@ -8,13 +8,22 @@ import {
   NodeOperationError,
 } from 'n8n-workflow';
 
-import { cardlyApiRequest, cardlyApiRequestAllItems, unwrap } from './GenericFunctions';
-import { accountOperations } from './descriptions/AccountDescription';
+import { cardlyApiRequestAllItems } from './GenericFunctions';
+import { accountOperations, accountFields } from './descriptions/AccountDescription';
 import { artworkOperations, artworkFields } from './descriptions/ArtworkDescription';
-import { orderOperations, orderFields } from './descriptions/OrderDescription';
 import { contactOperations, contactFields } from './descriptions/ContactDescription';
-import { buildPlaceBody, buildPreviewBody, OrderLineInput } from './helpers/orderBuilder';
-import { buildContactBody, ContactInput } from './helpers/contactBuilder';
+import { contactListOperations, contactListFields } from './descriptions/ContactListDescription';
+import { orderOperations, orderFields } from './descriptions/OrderDescription';
+import { referenceOperations, referenceFields } from './descriptions/ReferenceDescription';
+import { webhookOperations, webhookFields } from './descriptions/WebhookDescription';
+import * as accountActions from './actions/account';
+import * as artworkActions from './actions/artwork';
+import * as contactActions from './actions/contact';
+import * as contactListActions from './actions/contactList';
+import * as orderActions from './actions/order';
+import * as referenceActions from './actions/reference';
+import * as webhookActions from './actions/webhook';
+import { NodeItems, ResourceHandler } from './actions/types';
 
 export class Cardly implements INodeType {
   description: INodeTypeDescription = {
@@ -39,17 +48,27 @@ export class Cardly implements INodeType {
           { name: 'Account', value: 'account' },
           { name: 'Artwork', value: 'artwork' },
           { name: 'Contact', value: 'contact' },
+          { name: 'Contact List', value: 'contactList' },
           { name: 'Order', value: 'order' },
+          { name: 'Reference', value: 'reference' },
+          { name: 'Webhook', value: 'webhook' },
         ],
         default: 'order',
       },
       ...accountOperations,
+      ...accountFields,
       ...artworkOperations,
       ...artworkFields,
-      ...orderOperations,
-      ...orderFields,
       ...contactOperations,
       ...contactFields,
+      ...contactListOperations,
+      ...contactListFields,
+      ...orderOperations,
+      ...orderFields,
+      ...referenceOperations,
+      ...referenceFields,
+      ...webhookOperations,
+      ...webhookFields,
     ],
   };
 
@@ -59,115 +78,39 @@ export class Cardly implements INodeType {
         const items = await cardlyApiRequestAllItems.call(this, 'GET', '/art', { limit: 100 });
         return items.map((a: any) => ({ name: a.name ?? a.slug ?? a.id, value: a.id }));
       },
+      async getContactLists(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+        const items = await cardlyApiRequestAllItems.call(this, 'GET', '/contact-lists', { limit: 100 });
+        return items.map((l: any) => ({ name: l.name ?? l.id, value: l.id }));
+      },
     },
   };
 
-  private static readOrderLineInput(ctx: IExecuteFunctions, i: number): OrderLineInput {
-    const artwork = ctx.getNodeParameter('artwork', i) as string;
-    const template = ctx.getNodeParameter('template', i, '') as string;
-    const recipient = ctx.getNodeParameter('recipient.value', i, {}) as any;
-    const sender = ctx.getNodeParameter('sender.value', i, {}) as any;
-    const add = ctx.getNodeParameter('additionalFields', i, {}) as any;
-
-    const variables: Record<string, string> = {};
-    for (const v of add.variables?.variable ?? []) variables[v.key] = v.value;
-
-    const messagePages = (add.messagePages?.page ?? []).map((p: any) => ({ page: p.page, text: p.text }));
-
-    return {
-      artwork,
-      template: template || undefined,
-      quantity: add.quantity,
-      shippingMethod: add.shippingMethod,
-      shipToMe: add.shipToMe,
-      requestedArrival: add.requestedArrival || undefined,
-      variables: Object.keys(variables).length ? variables : undefined,
-      messagePages: messagePages.length ? messagePages : undefined,
-      recipient,
-      sender,
-    };
-  }
-
-  private static readContactInput(ctx: IExecuteFunctions, i: number): ContactInput {
-    const add = ctx.getNodeParameter('additionalFields', i, {}) as any;
-    const fields: Record<string, string> = {};
-    for (const f of add.fields?.field ?? []) fields[f.key] = f.value;
-
-    return {
-      firstName: ctx.getNodeParameter('firstName', i) as string,
-      address: ctx.getNodeParameter('address', i) as string,
-      locality: ctx.getNodeParameter('locality', i) as string,
-      country: ctx.getNodeParameter('country', i) as string,
-      externalId: add.externalId || undefined,
-      lastName: add.lastName || undefined,
-      email: add.email || undefined,
-      company: add.company || undefined,
-      address2: add.address2 || undefined,
-      region: add.region || undefined,
-      postcode: add.postcode || undefined,
-      fields: Object.keys(fields).length ? fields : undefined,
-    };
-  }
+  static RESOURCE_HANDLERS: Record<string, ResourceHandler> = {
+    account: accountActions.execute,
+    artwork: artworkActions.execute,
+    contact: contactActions.execute,
+    contactList: contactListActions.execute,
+    order: orderActions.execute,
+    reference: referenceActions.execute,
+    webhook: webhookActions.execute,
+  };
 
   async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
     const items = this.getInputData();
     const returnData: INodeExecutionData[] = [];
     const resource = this.getNodeParameter('resource', 0) as string;
     const operation = this.getNodeParameter('operation', 0) as string;
+    const handler = Cardly.RESOURCE_HANDLERS[resource];
+    if (!handler) throw new NodeOperationError(this.getNode(), `Unsupported resource: ${resource}`);
 
     for (let i = 0; i < items.length; i++) {
       try {
-        let responseData: any;
-
-        if (resource === 'account' && operation === 'getBalance') {
-          responseData = unwrap(await cardlyApiRequest.call(this, 'GET', '/account/balance'));
-        } else if (resource === 'artwork' && operation === 'getMany') {
-          const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-          const ownOnly = this.getNodeParameter('ownOnly', i) as boolean;
-          const qs: any = {};
-          if (ownOnly) qs.ownOnly = true;
-          if (returnAll) {
-            responseData = await cardlyApiRequestAllItems.call(this, 'GET', '/art', qs);
-          } else {
-            qs.limit = this.getNodeParameter('limit', i) as number;
-            responseData = unwrap(await cardlyApiRequest.call(this, 'GET', '/art', {}, qs))?.results ?? [];
-          }
-        } else if (resource === 'order' && operation === 'place') {
-          const line = Cardly.readOrderLineInput(this, i);
-          const po = this.getNodeParameter('purchaseOrderNumber', i, '') as string;
-          const body = buildPlaceBody([line], po || undefined);
-          responseData = unwrap(await cardlyApiRequest.call(this, 'POST', '/orders/place', body));
-        } else if (resource === 'order' && operation === 'preview') {
-          const line = Cardly.readOrderLineInput(this, i);
-          const body = buildPreviewBody(line);
-          responseData = unwrap(await cardlyApiRequest.call(this, 'POST', '/orders/preview', body));
-        } else if (resource === 'order' && operation === 'get') {
-          const orderId = this.getNodeParameter('orderId', i) as string;
-          responseData = unwrap(await cardlyApiRequest.call(this, 'GET', `/orders/${orderId}`));
-        } else if (resource === 'order' && operation === 'getMany') {
-          const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-          if (returnAll) {
-            responseData = await cardlyApiRequestAllItems.call(this, 'GET', '/orders', {});
-          } else {
-            const limit = this.getNodeParameter('limit', i) as number;
-            responseData = unwrap(await cardlyApiRequest.call(this, 'GET', '/orders', {}, { limit }))?.results ?? [];
-          }
-        } else if (resource === 'contact' && (operation === 'create' || operation === 'sync')) {
-          const listId = this.getNodeParameter('listId', i) as string;
-          const input = Cardly.readContactInput(this, i);
-          const body = buildContactBody(input, operation as 'create' | 'sync');
-          const endpoint =
-            operation === 'sync'
-              ? `/contact-lists/${listId}/contacts/sync`
-              : `/contact-lists/${listId}/contacts`;
-          responseData = unwrap(await cardlyApiRequest.call(this, 'POST', endpoint, body));
+        const result = await handler.call(this, operation, i);
+        if (result instanceof NodeItems) {
+          for (const item of result.items) returnData.push({ ...item, pairedItem: { item: i } });
         } else {
-          throw new NodeOperationError(this.getNode(), `Unsupported operation ${resource}:${operation}`);
-        }
-
-        const asArray = Array.isArray(responseData) ? responseData : [responseData];
-        for (const entry of asArray) {
-          returnData.push({ json: entry, pairedItem: { item: i } });
+          const asArray = Array.isArray(result) ? result : [result];
+          for (const entry of asArray) returnData.push({ json: entry, pairedItem: { item: i } });
         }
       } catch (error) {
         if (this.continueOnFail()) {
@@ -177,7 +120,6 @@ export class Cardly implements INodeType {
         throw error;
       }
     }
-
     return [returnData];
   }
 }

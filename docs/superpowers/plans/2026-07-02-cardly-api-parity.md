@@ -1552,15 +1552,31 @@ git commit -m "feat: add Order Download Preview PDF (binary output)"
 
 ---
 
-### Task 11: README operations update + final verification
+### Task 11: README operations update + prepare-script fix + final verification
 
 **Files:**
-- Modify: `README.md`
+- Modify: `README.md`, `package.json`
 - Test: full suite + build + pack
 
 **Interfaces:** none new.
 
-- [ ] **Step 1: Update the "Nodes" operations list** in `README.md`
+- [ ] **Step 1: Add a `prepare` script so from-source installs build automatically**
+
+The README's "install from GitHub" line (`npm install alphaomegateam/n8n-nodes-cardly`) currently does NOT work: a git/local install runs the `prepare` lifecycle script to build, but this package has no `prepare` (only `prepublishOnly`, which runs on publish), and `dist/` is git-ignored — so a from-source install would ship no built node. Add a `prepare` script. In `package.json` `scripts`, add (alongside the existing `build`):
+
+```json
+    "prepare": "npm run build",
+```
+
+This runs on git/local installs and dev `npm install` (so from-source installs build), but NOT for registry consumers (they receive the prebuilt `dist/` in the tarball). Verify it's valid + present:
+
+Run: `node -p "require('./package.json').scripts.prepare"`
+Expected: prints `npm run build`.
+
+Run: `npm run build`
+Expected: build succeeds (the `prepare` script is just an alias; confirm nothing regressed).
+
+- [ ] **Step 2: Update the "Nodes" operations list** in `README.md`
 
 Replace the `### Cardly (action)` operations list with the full set:
 
@@ -1575,26 +1591,26 @@ Replace the `### Cardly (action)` operations list with the full set:
 - **Account** — Get Balance, Get Credit History, Get Gift Credit History
 ```
 
-- [ ] **Step 2: Verify README mentions the new resources**
+- [ ] **Step 3: Verify README mentions the new resources**
 
 Run: `node -e "const s=require('fs').readFileSync('README.md','utf8'); for(const t of ['Contact List','Webhook','Reference','Download Preview PDF','Get Credit History']){ if(!s.includes(t)) throw new Error('missing: '+t);} console.log('README ops ok')"`
 Expected: prints `README ops ok`.
 
-- [ ] **Step 3: Full verification pass**
+- [ ] **Step 4: Full verification pass**
 
 Run: `npm run lint && npm run build && npm test`
 Expected: all exit 0; Jest reports the full suite green (42 original + all new tests).
 
-- [ ] **Step 4: Package dry-run** (ensure no leakage)
+- [ ] **Step 5: Package dry-run** (ensure no leakage)
 
 Run: `npm pack --dry-run 2>&1 | grep -iE "actions/|stub|test/|\.ts\.map" | head`
-Expected: `dist/nodes/Cardly/actions/*.js` present; NO `test/`, NO stray `stub`, NO raw `.ts` sources outside dist.
+Expected: `dist/nodes/Cardly/actions/*.js` present; NO `test/`, NO stray `stub`, NO raw `.ts` sources outside dist. Also confirm the `prepare` script does not cause dev/CI-relevant issues — `npm ci` in CI runs `prepare`, which just builds (fine).
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
-git add README.md
-git commit -m "docs: document full operation set for API parity"
+git add README.md package.json
+git commit -m "docs: document full operation set; add prepare script for from-source installs"
 ```
 
 ---

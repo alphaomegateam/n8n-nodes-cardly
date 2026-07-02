@@ -21,7 +21,7 @@ function isEmpty(v: unknown): boolean {
   return v === undefined || v === null || v === '';
 }
 
-export function buildContactBody(input: ContactInput, mode: 'create' | 'sync'): IDataObject {
+export function buildContactBody(input: ContactInput, mode: 'create' | 'sync' | 'update'): IDataObject {
   const missing = CREATE_REQUIRED.filter((k) => isEmpty(input[k]));
   if (missing.length > 0) {
     throw new Error(`Contact is missing required field(s): ${missing.join(', ')}.`);
