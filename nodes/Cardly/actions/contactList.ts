@@ -15,7 +15,9 @@ export async function execute(this: IExecuteFunctions, operation: string, i: num
   }
   if (operation === 'create') {
     const add = this.getNodeParameter('additionalFields', i, {}) as any;
-    const fields = (add.fields?.field ?? []).map((f: any) => ({ name: f.name, type: f.type, description: f.description }));
+    const fields = (add.fields?.field ?? [])
+      .filter((f: any) => f.name)
+      .map((f: any) => ({ name: f.name, type: f.type, description: f.description }));
     const input: ContactListInput = {
       name: this.getNodeParameter('name', i) as string,
       description: add.description || undefined,

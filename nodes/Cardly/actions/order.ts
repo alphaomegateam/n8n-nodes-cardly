@@ -11,7 +11,7 @@ function readOrderLineInput(ctx: IExecuteFunctions, i: number): OrderLineInput {
   const add = ctx.getNodeParameter('additionalFields', i, {}) as any;
 
   const variables: Record<string, string> = {};
-  for (const v of add.variables?.variable ?? []) variables[v.key] = v.value;
+  for (const v of add.variables?.variable ?? []) if (v.key) variables[v.key] = v.value;
   const messagePages = (add.messagePages?.page ?? []).map((p: any) => ({ page: p.page, text: p.text }));
 
   return {
