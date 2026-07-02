@@ -12,7 +12,9 @@ import { cardlyApiRequest, cardlyApiRequestAllItems, unwrap } from './GenericFun
 import { accountOperations } from './descriptions/AccountDescription';
 import { artworkOperations, artworkFields } from './descriptions/ArtworkDescription';
 import { orderOperations, orderFields } from './descriptions/OrderDescription';
+import { contactOperations, contactFields } from './descriptions/ContactDescription';
 import { buildPlaceBody, buildPreviewBody, OrderLineInput } from './helpers/orderBuilder';
+import { buildContactBody, ContactInput } from './helpers/contactBuilder';
 
 export class Cardly implements INodeType {
   description: INodeTypeDescription = {
@@ -46,6 +48,8 @@ export class Cardly implements INodeType {
       ...artworkFields,
       ...orderOperations,
       ...orderFields,
+      ...contactOperations,
+      ...contactFields,
     ],
   };
 
@@ -81,6 +85,27 @@ export class Cardly implements INodeType {
       messagePages: messagePages.length ? messagePages : undefined,
       recipient,
       sender,
+    };
+  }
+
+  private static readContactInput(ctx: IExecuteFunctions, i: number): ContactInput {
+    const add = ctx.getNodeParameter('additionalFields', i, {}) as any;
+    const fields: Record<string, string> = {};
+    for (const f of add.fields?.field ?? []) fields[f.key] = f.value;
+
+    return {
+      firstName: ctx.getNodeParameter('firstName', i) as string,
+      address: ctx.getNodeParameter('address', i) as string,
+      locality: ctx.getNodeParameter('locality', i) as string,
+      country: ctx.getNodeParameter('country', i) as string,
+      externalId: add.externalId || undefined,
+      lastName: add.lastName || undefined,
+      email: add.email || undefined,
+      company: add.company || undefined,
+      address2: add.address2 || undefined,
+      region: add.region || undefined,
+      postcode: add.postcode || undefined,
+      fields: Object.keys(fields).length ? fields : undefined,
     };
   }
 
@@ -127,6 +152,15 @@ export class Cardly implements INodeType {
             const limit = this.getNodeParameter('limit', i) as number;
             responseData = unwrap(await cardlyApiRequest.call(this, 'GET', '/orders', {}, { limit }))?.results ?? [];
           }
+        } else if (resource === 'contact' && (operation === 'create' || operation === 'sync')) {
+          const listId = this.getNodeParameter('listId', i) as string;
+          const input = Cardly.readContactInput(this, i);
+          const body = buildContactBody(input, operation as 'create' | 'sync');
+          const endpoint =
+            operation === 'sync'
+              ? `/contact-lists/${listId}/contacts/sync`
+              : `/contact-lists/${listId}/contacts`;
+          responseData = unwrap(await cardlyApiRequest.call(this, 'POST', endpoint, body));
         } else {
           throw new NodeOperationError(this.getNode(), `Unsupported operation ${resource}:${operation}`);
         }
