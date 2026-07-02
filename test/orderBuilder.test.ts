@@ -51,6 +51,38 @@ describe('buildOrderLine', () => {
   });
 });
 
+describe('empty-field omission', () => {
+  const recipient = {
+    firstName: 'Thor',
+    address: '1 Main Street',
+    city: 'Brooklyn',
+    region: 'NY',
+    postcode: '12345',
+    country: 'US',
+  };
+
+  it('omits optional recipient keys that are undefined', () => {
+    const line = buildOrderLine({ artwork: 'x', recipient });
+    expect(Object.keys(line.recipient as object)).not.toContain('lastName');
+    expect(Object.keys(line.recipient as object)).not.toContain('company');
+    expect(Object.keys(line.recipient as object)).not.toContain('address2');
+  });
+
+  it('omits optional recipient keys that are empty strings', () => {
+    const line = buildOrderLine({ artwork: 'x', recipient: { ...recipient, lastName: '', company: '' } });
+    expect(Object.keys(line.recipient as object)).not.toContain('lastName');
+    expect(Object.keys(line.recipient as object)).not.toContain('company');
+  });
+
+  it('omits line-level fields (template, style, variables) when not provided', () => {
+    const line = buildOrderLine({ artwork: 'x', recipient });
+    expect(line.template).toBeUndefined();
+    expect(line.style).toBeUndefined();
+    expect(line.variables).toBeUndefined();
+    expect(line.messages).toBeUndefined();
+  });
+});
+
 describe('buildPlaceBody', () => {
   it('wraps lines and keeps purchaseOrderNumber top-level', () => {
     const body = buildPlaceBody([{ artwork: 'x', recipient }], 'PO1');
