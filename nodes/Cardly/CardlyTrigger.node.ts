@@ -10,6 +10,11 @@ import {
 import { cardlyApiRequest, unwrap } from './GenericFunctions';
 import { extractSignatureHeaders, verifyCardlySignature } from './helpers/signature';
 
+function isNotFound(error: any): boolean {
+  const code = error?.httpCode ?? error?.statusCode ?? error?.cause?.statusCode;
+  return String(code) === '404';
+}
+
 const CARDLY_EVENTS = [
   'contact.order.created',
   'contact.order.sent',
@@ -67,7 +72,8 @@ export class CardlyTrigger implements INodeType {
           await cardlyApiRequest.call(this, 'GET', `/webhooks/${webhookData.webhookId}`);
           return true;
         } catch (error) {
-          return false;
+          if (isNotFound(error)) return false;
+          throw error;
         }
       },
 
@@ -93,7 +99,7 @@ export class CardlyTrigger implements INodeType {
         try {
           await cardlyApiRequest.call(this, 'DELETE', `/webhooks/${webhookData.webhookId}`);
         } catch (error) {
-          return false;
+          if (!isNotFound(error)) throw error;
         }
         delete webhookData.webhookId;
         delete webhookData.secret;
@@ -112,10 +118,16 @@ export class CardlyTrigger implements INodeType {
 
     if (verify) {
       const secret = (this.getWorkflowStaticData('node').secret as string) || '';
+      // Provisional: rawBody fallback to JSON.stringify(body) assumes the signed bytes are the
+      // re-serialized JSON body; the exact bytes Cardly signs are unconfirmed and must be
+      // validated in the live-key phase before enabling verify-by-default.
       const rawBody = (req as any).rawBody ? (req as any).rawBody.toString() : JSON.stringify(body);
+      // Provisional: picking the first signature header value assumes a single relevant header;
+      // the real Cardly signing scheme (header name + exact signed bytes) is unconfirmed and must
+      // be validated in the live-key phase before enabling verify-by-default.
       const sig = Object.values(signatureHeaders)[0];
       if (secret && !verifyCardlySignature(rawBody, secret, sig)) {
-        return { noWebhookResponse: true };
+        return {};
       }
     }
 
