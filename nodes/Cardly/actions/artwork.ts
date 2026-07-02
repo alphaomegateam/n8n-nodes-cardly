@@ -2,6 +2,10 @@ import { IExecuteFunctions, IDataObject, NodeOperationError } from 'n8n-workflow
 import { cardlyApiRequest, cardlyApiRequestAllItems, unwrap } from '../GenericFunctions';
 
 export async function execute(this: IExecuteFunctions, operation: string, i: number): Promise<any> {
+  if (operation === 'get') {
+    const artworkId = this.getNodeParameter('artworkId', i) as string;
+    return unwrap(await cardlyApiRequest.call(this, 'GET', `/art/${artworkId}`));
+  }
   if (operation === 'getMany') {
     const returnAll = this.getNodeParameter('returnAll', i) as boolean;
     const ownOnly = this.getNodeParameter('ownOnly', i) as boolean;

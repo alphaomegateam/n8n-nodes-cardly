@@ -9,6 +9,11 @@ export const artworkOperations: INodeProperties[] = [
     displayOptions: { show: { resource: ['artwork'] } },
     options: [
       {
+        name: 'Get',
+        value: 'get',
+        action: 'Get an artwork',
+      },
+      {
         name: 'Get Many',
         value: 'getMany',
         action: 'Get many artworks',
@@ -20,6 +25,15 @@ export const artworkOperations: INodeProperties[] = [
 ];
 
 export const artworkFields: INodeProperties[] = [
+  {
+    displayName: 'Artwork ID',
+    name: 'artworkId',
+    type: 'string',
+    default: '',
+    required: true,
+    description: 'Artwork UUID or slug',
+    displayOptions: { show: { resource: ['artwork'], operation: ['get'] } },
+  },
   {
     displayName: 'Return All',
     name: 'returnAll',
