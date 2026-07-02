@@ -11,6 +11,8 @@ import {
 import { cardlyApiRequest, cardlyApiRequestAllItems, unwrap } from './GenericFunctions';
 import { accountOperations } from './descriptions/AccountDescription';
 import { artworkOperations, artworkFields } from './descriptions/ArtworkDescription';
+import { orderOperations, orderFields } from './descriptions/OrderDescription';
+import { buildPlaceBody, buildPreviewBody, OrderLineInput } from './helpers/orderBuilder';
 
 export class Cardly implements INodeType {
   description: INodeTypeDescription = {
@@ -42,6 +44,8 @@ export class Cardly implements INodeType {
       ...accountOperations,
       ...artworkOperations,
       ...artworkFields,
+      ...orderOperations,
+      ...orderFields,
     ],
   };
 
@@ -53,6 +57,32 @@ export class Cardly implements INodeType {
       },
     },
   };
+
+  private static readOrderLineInput(ctx: IExecuteFunctions, i: number): OrderLineInput {
+    const artwork = ctx.getNodeParameter('artwork', i) as string;
+    const template = ctx.getNodeParameter('template', i, '') as string;
+    const recipient = ctx.getNodeParameter('recipient.value', i, {}) as any;
+    const sender = ctx.getNodeParameter('sender.value', i, {}) as any;
+    const add = ctx.getNodeParameter('additionalFields', i, {}) as any;
+
+    const variables: Record<string, string> = {};
+    for (const v of add.variables?.variable ?? []) variables[v.key] = v.value;
+
+    const messagePages = (add.messagePages?.page ?? []).map((p: any) => ({ page: p.page, text: p.text }));
+
+    return {
+      artwork,
+      template: template || undefined,
+      quantity: add.quantity,
+      shippingMethod: add.shippingMethod,
+      shipToMe: add.shipToMe,
+      requestedArrival: add.requestedArrival || undefined,
+      variables: Object.keys(variables).length ? variables : undefined,
+      messagePages: messagePages.length ? messagePages : undefined,
+      recipient,
+      sender,
+    };
+  }
 
   async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
     const items = this.getInputData();
@@ -76,6 +106,26 @@ export class Cardly implements INodeType {
           } else {
             qs.limit = this.getNodeParameter('limit', i) as number;
             responseData = unwrap(await cardlyApiRequest.call(this, 'GET', '/art', {}, qs))?.results ?? [];
+          }
+        } else if (resource === 'order' && operation === 'place') {
+          const line = Cardly.readOrderLineInput(this, i);
+          const po = this.getNodeParameter('purchaseOrderNumber', i, '') as string;
+          const body = buildPlaceBody([line], po || undefined);
+          responseData = unwrap(await cardlyApiRequest.call(this, 'POST', '/orders/place', body));
+        } else if (resource === 'order' && operation === 'preview') {
+          const line = Cardly.readOrderLineInput(this, i);
+          const body = buildPreviewBody(line);
+          responseData = unwrap(await cardlyApiRequest.call(this, 'POST', '/orders/preview', body));
+        } else if (resource === 'order' && operation === 'get') {
+          const orderId = this.getNodeParameter('orderId', i) as string;
+          responseData = unwrap(await cardlyApiRequest.call(this, 'GET', `/orders/${orderId}`));
+        } else if (resource === 'order' && operation === 'getMany') {
+          const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+          if (returnAll) {
+            responseData = await cardlyApiRequestAllItems.call(this, 'GET', '/orders', {});
+          } else {
+            const limit = this.getNodeParameter('limit', i) as number;
+            responseData = unwrap(await cardlyApiRequest.call(this, 'GET', '/orders', {}, { limit }))?.results ?? [];
           }
         } else {
           throw new NodeOperationError(this.getNode(), `Unsupported operation ${resource}:${operation}`);
