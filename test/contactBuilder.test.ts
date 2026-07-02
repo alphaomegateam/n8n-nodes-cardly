@@ -25,4 +25,19 @@ describe('buildContactBody', () => {
     expect(() => buildContactBody(base as any, 'sync')).toThrow(/externalId.*email|email.*externalId/i);
     expect(() => buildContactBody({ ...base, externalId: 'thor1' } as any, 'sync')).not.toThrow();
   });
+
+  it('omits optional fields that are empty or undefined', () => {
+    const body = buildContactBody({ ...base, email: 't@x.com', lastName: '', company: undefined } as any, 'create');
+    expect(Object.keys(body)).not.toContain('lastName');
+    expect(Object.keys(body)).not.toContain('company');
+    expect(Object.keys(body)).not.toContain('address2');
+    expect(Object.keys(body)).not.toContain('externalId');
+  });
+
+  it('omits the fields key when custom fields are empty or absent', () => {
+    const noFields = buildContactBody({ ...base, email: 't@x.com' } as any, 'create');
+    expect(noFields.fields).toBeUndefined();
+    const emptyFields = buildContactBody({ ...base, email: 't@x.com', fields: {} } as any, 'create');
+    expect(emptyFields.fields).toBeUndefined();
+  });
 });
