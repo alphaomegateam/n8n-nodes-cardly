@@ -14,11 +14,13 @@ import { artworkOperations, artworkFields } from './descriptions/ArtworkDescript
 import { orderOperations, orderFields } from './descriptions/OrderDescription';
 import { contactOperations, contactFields } from './descriptions/ContactDescription';
 import { contactListOperations, contactListFields } from './descriptions/ContactListDescription';
+import { webhookOperations, webhookFields } from './descriptions/WebhookDescription';
 import * as orderActions from './actions/order';
 import * as contactActions from './actions/contact';
 import * as contactListActions from './actions/contactList';
 import * as artworkActions from './actions/artwork';
 import * as accountActions from './actions/account';
+import * as webhookActions from './actions/webhook';
 import { NodeItems, ResourceHandler } from './actions/types';
 
 export class Cardly implements INodeType {
@@ -46,6 +48,7 @@ export class Cardly implements INodeType {
           { name: 'Contact', value: 'contact' },
           { name: 'Contact List', value: 'contactList' },
           { name: 'Order', value: 'order' },
+          { name: 'Webhook', value: 'webhook' },
         ],
         default: 'order',
       },
@@ -58,6 +61,8 @@ export class Cardly implements INodeType {
       ...contactFields,
       ...contactListOperations,
       ...contactListFields,
+      ...webhookOperations,
+      ...webhookFields,
     ],
   };
 
@@ -80,6 +85,7 @@ export class Cardly implements INodeType {
     contactList: contactListActions.execute,
     artwork: artworkActions.execute,
     account: accountActions.execute,
+    webhook: webhookActions.execute,
   };
 
   async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
