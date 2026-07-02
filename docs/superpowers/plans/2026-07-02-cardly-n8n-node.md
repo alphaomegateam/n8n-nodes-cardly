@@ -2081,3 +2081,16 @@ git push origin main
 - The two live smoke tests that mutate nothing (balance, preview, place-in-test-mode, contact-in-test-mode) can run in CI-less local verification with the test key. The Trigger node's live test (Task 10 Step 6) needs a live key and a publicly reachable n8n URL — run it manually.
 - If lint flags n8n-nodes-base rules (e.g. alphabetical option ordering, `displayName` casing, missing `description`), fix per the rule message; these are style rules and the fixes are mechanical.
 - If `happy-birthday` artwork slug is unavailable on the test org, pull a real artwork ID from `GET /art` first and substitute it in the order smoke tests.
+
+---
+
+## Deferred to the live-key validation phase (post-v0.1.0)
+
+The webhook trigger's signature handling is intentionally provisional because Cardly does not publish its signing scheme (header name / algorithm / signed bytes). Before enabling signature verification by default, run the manual live-key webhook test (Task 10, Step 6) and then:
+
+1. **Confirm the signature scheme empirically** — inspect the `_signatureHeaders` passthrough on a real postback to learn the header name and format; finalize `verifyCardlySignature` (algorithm + which header) accordingly.
+2. **Flip signature verification fail-closed** once the scheme is confirmed — currently `verifyCardlySignature` returns `true` when the header is absent and the trigger short-circuits when no secret is stored (fail-open, correct while the scheme is unknown so events are never silently dropped). After confirmation, these should reject unverified postbacks.
+3. **Capture the real raw body** — replace the `JSON.stringify(body)` rawBody fallback in `CardlyTrigger.webhook()` with the actual raw request bytes, since a re-serialized body won't match Cardly's signature.
+4. **Throw on missing webhook id** — `CardlyTrigger.create()` currently returns `false` if the create response lacks an `id`; make it throw a `NodeOperationError` so a failed registration surfaces to the user instead of silently activating with no events. (Validate against test-key behavior first — test keys may no-op webhook creation.)
+5. **Confirm `isNotFound()` 404 detection** against a real 404 from `cardlyApiRequest`.
+6. **(Optional) Namespace the trigger output** — `_signatureHeaders` is injected at the top level of the event body and could collide with a same-named Cardly field.
