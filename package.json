@@ -1,6 +1,7 @@
 {
-  "name": "n8n-nodes-cardly",
+  "name": "@alphaomegateam/n8n-nodes-cardly",
   "version": "0.1.0",
+  "publishConfig": { "access": "public" },
   "description": "n8n community node for the Cardly API — send physical cards, sync contacts, and react to webhook events.",
   "keywords": ["n8n-community-node-package", "cardly", "direct-mail", "greeting-cards"],
   "license": "MIT",

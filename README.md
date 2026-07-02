@@ -4,11 +4,18 @@ n8n community node for the [Cardly](https://www.card.ly) API — send physical g
 
 ## Installation
 
-In n8n: **Settings → Community Nodes → Install**, enter `n8n-nodes-cardly`.
+In n8n: **Settings → Community Nodes → Install**, enter `@alphaomegateam/n8n-nodes-cardly`.
 
-Or self-hosted CLI:
+Or self-hosted CLI (into your n8n custom nodes folder, e.g. `~/.n8n/nodes`):
 ```bash
-npm install n8n-nodes-cardly
+npm install @alphaomegateam/n8n-nodes-cardly
+```
+
+Self-hosted without publishing to npm — install straight from the repo or a local build:
+```bash
+cd ~/.n8n/nodes            # /home/node/.n8n/nodes in Docker; create it if missing
+npm install alphaomegateam/n8n-nodes-cardly   # from GitHub
+# ...then restart n8n
 ```
 
 ## Credentials
