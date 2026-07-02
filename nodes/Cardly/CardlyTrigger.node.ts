@@ -5,10 +5,11 @@ import {
   INodeType,
   INodeTypeDescription,
   IWebhookResponseData,
+  NodeOperationError,
 } from 'n8n-workflow';
 
 import { cardlyApiRequest, unwrap } from './GenericFunctions';
-import { extractSignatureHeaders, verifyCardlySignature } from './helpers/signature';
+import { extractRawProperty, verifyCardlySignature } from './helpers/signature';
 
 function isNotFound(error: any): boolean {
   const code = error?.httpCode ?? error?.statusCode ?? error?.cause?.statusCode;
@@ -56,9 +57,9 @@ export class CardlyTrigger implements INodeType {
         displayName: 'Verify Signature',
         name: 'verifySignature',
         type: 'boolean',
-        default: false,
+        default: true,
         description:
-          'Whether to reject postbacks that fail HMAC-SHA256 verification. Off by default until the Cardly signature scheme is confirmed; signature headers are always passed through on the output regardless.',
+          'Whether to reject postbacks whose signature does not match the webhook secret. Cardly signs each postback as md5(secret + "." + timestamp + "." + JSON data) and includes the result in the body\'s "signatures" array. Leave on to drop forged or unverifiable postbacks.',
       },
     ],
   };
@@ -86,7 +87,12 @@ export class CardlyTrigger implements INodeType {
           description: 'Created by n8n Cardly Trigger',
         });
         const data = unwrap(response);
-        if (!data?.id) return false;
+        if (!data?.id) {
+          throw new NodeOperationError(
+            this.getNode(),
+            'Cardly did not return a webhook ID; the webhook was not registered. (Note: test-mode API keys do not create webhooks — a live key is required.)',
+          );
+        }
         const webhookData = this.getWorkflowStaticData('node');
         webhookData.webhookId = data.id;
         webhookData.secret = data.secret; // only returned at creation
@@ -110,29 +116,27 @@ export class CardlyTrigger implements INodeType {
 
   async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
     const req = this.getRequestObject();
-    const headers = this.getHeaderData() as IDataObject;
     const body = this.getBodyData() as IDataObject;
-    const verify = this.getNodeParameter('verifySignature', false) as boolean;
-
-    const signatureHeaders = extractSignatureHeaders(headers as Record<string, any>);
+    const verify = this.getNodeParameter('verifySignature', true) as boolean;
 
     if (verify) {
       const secret = (this.getWorkflowStaticData('node').secret as string) || '';
-      // Provisional: rawBody fallback to JSON.stringify(body) assumes the signed bytes are the
-      // re-serialized JSON body; the exact bytes Cardly signs are unconfirmed and must be
-      // validated in the live-key phase before enabling verify-by-default.
-      const rawBody = (req as any).rawBody ? (req as any).rawBody.toString() : JSON.stringify(body);
-      // Provisional: picking the first signature header value assumes a single relevant header;
-      // the real Cardly signing scheme (header name + exact signed bytes) is unconfirmed and must
-      // be validated in the live-key phase before enabling verify-by-default.
-      const sig = Object.values(signatureHeaders)[0];
-      if (secret && !verifyCardlySignature(rawBody, secret, sig)) {
+      const timestamp = body.timestamp as string | number;
+      const signatures = (body.signatures as string[]) ?? [];
+      // Cardly signs the JSON-encoded `data` object as transmitted, so use the raw
+      // request-body bytes when available to avoid re-serialization drift; fall back to
+      // re-stringifying the parsed data only if the raw body is unavailable.
+      const rawBody = (req as any).rawBody ? (req as any).rawBody.toString() : undefined;
+      const dataJson =
+        (rawBody && extractRawProperty(rawBody, 'data')) ?? JSON.stringify(body.data ?? null);
+      if (!verifyCardlySignature(secret, timestamp, dataJson, signatures)) {
+        // Acknowledge with a default 200 (no manual response) but do not run the workflow.
         return {};
       }
     }
 
     return {
-      workflowData: [this.helpers.returnJsonArray([{ ...body, _signatureHeaders: signatureHeaders }])],
+      workflowData: [this.helpers.returnJsonArray([body])],
     };
   }
 }

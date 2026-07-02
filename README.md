@@ -42,7 +42,7 @@ Starts a workflow on subscribed webhook events (order created/sent/refunded, gif
 
 ## Security notes
 - The webhook `secret` is returned by Cardly only once (at creation) and is stored in n8n's workflow static data (unencrypted, as is standard for community trigger nodes).
-- **Signature verification is off by default.** Cardly's signature scheme (header name / algorithm) is not published in the v2 OpenAPI spec; incoming signature-like headers are passed through on the trigger output as `_signatureHeaders` so you can inspect and verify downstream. Once the scheme is confirmed, enable **Verify Signature**.
+- **Signature verification is on by default.** Cardly signs each postback as `md5(secret + "." + timestamp + "." + <JSON-encoded data>)` and includes the result in the body's `signatures` array. The Cardly Trigger recomputes this from the stored webhook secret and drops any postback that doesn't match (including postbacks received when no secret is stored — fail-closed). Turn off **Verify Signature** only if you need to accept unverified postbacks.
 
 ## Development
 ```bash

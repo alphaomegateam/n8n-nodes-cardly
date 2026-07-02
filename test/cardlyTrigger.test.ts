@@ -107,36 +107,41 @@ describe('webhook lifecycle', () => {
     expect(staticData.webhookId).toBe('wh1');
   });
 
-  it('webhook() returns {} (no workflowData) when verification fails', async () => {
-    const staticData: Record<string, any> = { secret: 'shh' };
-    const fakeThis: any = {
-      getRequestObject: () => ({ rawBody: Buffer.from('{"foo":"bar"}') }),
-      getHeaderData: () => ({ 'x-cardly-signature': 'not-a-valid-signature' }),
-      getBodyData: () => ({ foo: 'bar' }),
-      getNodeParameter: () => true,
-      getWorkflowStaticData: () => staticData,
-      helpers: { returnJsonArray: (items: any[]) => items },
-    };
+  // A genuinely valid postback built from the docs' golden vector:
+  // md5("secretabc.1234567890.{"test":true}") === 6ef4f0658ff7bb880fc3ae0cf7db3b2a
+  const validRaw =
+    '{"timestamp":1234567890,"data":{"test":true},"signatures":["6ef4f0658ff7bb880fc3ae0cf7db3b2a"]}';
+  const validBody = { timestamp: 1234567890, data: { test: true }, signatures: ['6ef4f0658ff7bb880fc3ae0cf7db3b2a'] };
+  const webhookThis = (opts: { raw: string; body: any; secret?: string; verify?: boolean }) => ({
+    getRequestObject: () => ({ rawBody: Buffer.from(opts.raw) }),
+    getBodyData: () => opts.body,
+    getNodeParameter: (_name: string, def?: any) => (opts.verify ?? def),
+    getWorkflowStaticData: () => (opts.secret !== undefined ? { secret: opts.secret } : {}),
+    helpers: { returnJsonArray: (items: any[]) => items },
+  });
 
-    const result = await node.webhook.call(fakeThis);
+  it('webhook() returns workflowData for a validly-signed postback (verify on by default)', async () => {
+    const result = await node.webhook.call(webhookThis({ raw: validRaw, body: validBody, secret: 'secretabc' }) as any);
+    expect(result.workflowData).toBeDefined();
+  });
 
+  it('webhook() returns {} when the signature does not match', async () => {
+    const badBody = { ...validBody, signatures: ['deadbeef'] };
+    const badRaw = '{"timestamp":1234567890,"data":{"test":true},"signatures":["deadbeef"]}';
+    const result = await node.webhook.call(webhookThis({ raw: badRaw, body: badBody, secret: 'secretabc' }) as any);
     expect(result).toEqual({});
     expect(result.workflowData).toBeUndefined();
   });
 
-  it('webhook() returns workflowData when verifySignature is OFF', async () => {
-    const staticData: Record<string, any> = { secret: 'shh' };
-    const fakeThis: any = {
-      getRequestObject: () => ({ rawBody: Buffer.from('{"foo":"bar"}') }),
-      getHeaderData: () => ({ 'x-cardly-signature': 'not-a-valid-signature' }),
-      getBodyData: () => ({ foo: 'bar' }),
-      getNodeParameter: () => false,
-      getWorkflowStaticData: () => staticData,
-      helpers: { returnJsonArray: (items: any[]) => items },
-    };
+  it('webhook() returns {} (fail-closed) when no secret is stored', async () => {
+    const result = await node.webhook.call(webhookThis({ raw: validRaw, body: validBody, secret: '' }) as any);
+    expect(result).toEqual({});
+  });
 
-    const result = await node.webhook.call(fakeThis);
-
+  it('webhook() returns workflowData when verifySignature is OFF, even with a bad signature', async () => {
+    const badBody = { ...validBody, signatures: ['deadbeef'] };
+    const badRaw = '{"timestamp":1234567890,"data":{"test":true},"signatures":["deadbeef"]}';
+    const result = await node.webhook.call(webhookThis({ raw: badRaw, body: badBody, secret: 'secretabc', verify: false }) as any);
     expect(result.workflowData).toBeDefined();
   });
 });
