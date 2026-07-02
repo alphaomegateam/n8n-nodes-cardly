@@ -92,7 +92,7 @@ export async function cardlyApiRequestAllItems(
     const data = unwrap(response);
     const page: any[] = data?.results ?? [];
     results.push(...page);
-    const total: number = data?.meta?.totalRecords ?? results.length;
+    const total: number = data?.meta?.totalRecords ?? data?.totalRecords ?? results.length;
     offset += limit;
     if (page.length === 0 || results.length >= total) break;
   }
