@@ -54,7 +54,10 @@ export async function execute(this: IExecuteFunctions, operation: string, i: num
     const data = unwrap(await cardlyApiRequest.call(this, 'POST', '/orders/preview', buildPreviewBody(line)));
     const urls = data?.preview?.urls ?? {};
     if (data?.preview?.expires && new Date(data.preview.expires).getTime() < Date.now()) {
-      throw new Error('Preview document already expired.');
+      throw new NodeOperationError(this.getNode(), 'Preview document already expired.', { itemIndex: i });
+    }
+    if (!urls.card && !urls.envelope) {
+      throw new NodeOperationError(this.getNode(), 'Preview returned no document URLs to download.', { itemIndex: i });
     }
     const binary: IBinaryKeyData = {};
     const fetchPdf = async (url: string) => {
