@@ -14,7 +14,7 @@
     "type": "git",
     "url": "git+https://github.com/alphaomegateam/n8n-nodes-cardly.git"
   },
-  "engines": { "node": ">=18.10" },
+  "engines": { "node": ">=22.14.0" },
   "main": "index.js",
   "scripts": {
     "clean": "rm -rf dist",
