@@ -15,3 +15,10 @@ describe('Cardly action node', () => {
     expect(node.methods?.loadOptions?.getArtwork).toBeInstanceOf(Function);
   });
 });
+
+describe('Cardly contact-list dropdown', () => {
+  const node = new Cardly();
+  it('exposes a getContactLists loadOptions method', () => {
+    expect(node.methods?.loadOptions?.getContactLists).toBeInstanceOf(Function);
+  });
+});

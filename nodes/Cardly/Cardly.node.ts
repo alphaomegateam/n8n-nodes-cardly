@@ -62,6 +62,10 @@ export class Cardly implements INodeType {
         const items = await cardlyApiRequestAllItems.call(this, 'GET', '/art', { limit: 100 });
         return items.map((a: any) => ({ name: a.name ?? a.slug ?? a.id, value: a.id }));
       },
+      async getContactLists(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+        const items = await cardlyApiRequestAllItems.call(this, 'GET', '/contact-lists', { limit: 100 });
+        return items.map((l: any) => ({ name: l.name ?? l.id, value: l.id }));
+      },
     },
   };
 

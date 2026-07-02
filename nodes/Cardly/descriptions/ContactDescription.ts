@@ -27,13 +27,14 @@ export const contactOperations: INodeProperties[] = [
 
 export const contactFields: INodeProperties[] = [
   {
-    displayName: 'Contact List ID',
+    displayName: 'Contact List Name or ID',
     name: 'listId',
-    type: 'string',
+    type: 'options',
+    typeOptions: { loadOptionsMethod: 'getContactLists' },
     default: '',
     required: true,
+    description: 'The Cardly contact list. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
     displayOptions: { show: { resource: ['contact'] } },
-    description: 'The Cardly contact list to add to. Find the ID in the list URL in the Cardly portal.',
   },
   {
     displayName: 'First Name',
