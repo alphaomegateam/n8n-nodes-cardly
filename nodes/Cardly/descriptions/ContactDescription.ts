@@ -15,6 +15,22 @@ export const contactOperations: INodeProperties[] = [
         description: 'Add a contact (rejects duplicates by externalId/email)',
       },
       {
+        name: 'Find',
+        value: 'find',
+        action: 'Find a contact',
+        description: 'Find a contact by email or external ID',
+      },
+      {
+        name: 'Get',
+        value: 'get',
+        action: 'Get a contact',
+      },
+      {
+        name: 'Get Many',
+        value: 'getMany',
+        action: 'Get many contacts',
+      },
+      {
         name: 'Sync',
         value: 'sync',
         action: 'Sync a contact',
@@ -42,7 +58,7 @@ export const contactFields: INodeProperties[] = [
     type: 'string',
     default: '',
     required: true,
-    displayOptions: { show: { resource: ['contact'] } },
+    displayOptions: { show: { resource: ['contact'], operation: ['create', 'sync', 'update'] } },
     description: 'First name of the contact',
   },
   {
@@ -51,7 +67,7 @@ export const contactFields: INodeProperties[] = [
     type: 'string',
     default: '',
     required: true,
-    displayOptions: { show: { resource: ['contact'] } },
+    displayOptions: { show: { resource: ['contact'], operation: ['create', 'sync', 'update'] } },
     description: 'Street address of the contact',
   },
   {
@@ -60,7 +76,7 @@ export const contactFields: INodeProperties[] = [
     type: 'string',
     default: '',
     required: true,
-    displayOptions: { show: { resource: ['contact'] } },
+    displayOptions: { show: { resource: ['contact'], operation: ['create', 'sync', 'update'] } },
     description: 'City or suburb of the contact',
   },
   {
@@ -70,7 +86,7 @@ export const contactFields: INodeProperties[] = [
     default: '',
     required: true,
     description: '2-character ISO country code, e.g. US',
-    displayOptions: { show: { resource: ['contact'] } },
+    displayOptions: { show: { resource: ['contact'], operation: ['create', 'sync', 'update'] } },
   },
   {
     displayName: 'Additional Fields',
@@ -78,7 +94,7 @@ export const contactFields: INodeProperties[] = [
     type: 'collection',
     placeholder: 'Add Field',
     default: {},
-    displayOptions: { show: { resource: ['contact'] } },
+    displayOptions: { show: { resource: ['contact'], operation: ['create', 'sync', 'update'] } },
     options: [
       { displayName: 'Address 2', name: 'address2', type: 'string', default: '', description: 'Second address line' },
       { displayName: 'Company', name: 'company', type: 'string', default: '', description: 'Company name of the contact' },
@@ -126,5 +142,39 @@ export const contactFields: INodeProperties[] = [
         description: 'State/province. Conditionally required by country.',
       },
     ],
+  },
+  {
+    displayName: 'Contact ID',
+    name: 'contactId',
+    type: 'string',
+    default: '',
+    required: true,
+    displayOptions: { show: { resource: ['contact'], operation: ['get'] } },
+  },
+  {
+    displayName: 'Query',
+    name: 'query',
+    type: 'string',
+    default: '',
+    required: true,
+    description: 'Email address or external ID to search for',
+    displayOptions: { show: { resource: ['contact'], operation: ['find'] } },
+  },
+  {
+    displayName: 'Return All',
+    name: 'returnAll',
+    type: 'boolean',
+    default: false,
+    displayOptions: { show: { resource: ['contact'], operation: ['getMany'] } },
+    description: 'Whether to return all results or only up to a given limit',
+  },
+  {
+    displayName: 'Limit',
+    name: 'limit',
+    type: 'number',
+    default: 50,
+    typeOptions: { minValue: 1 },
+    displayOptions: { show: { resource: ['contact'], operation: ['getMany'], returnAll: [false] } },
+    description: 'Max number of results to return',
   },
 ];

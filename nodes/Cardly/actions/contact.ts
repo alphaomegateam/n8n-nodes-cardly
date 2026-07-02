@@ -1,5 +1,5 @@
 import { IExecuteFunctions, NodeOperationError } from 'n8n-workflow';
-import { cardlyApiRequest, unwrap } from '../GenericFunctions';
+import { cardlyApiRequest, cardlyApiRequestAllItems, unwrap } from '../GenericFunctions';
 import { buildContactBody, ContactInput } from '../helpers/contactBuilder';
 
 function readContactInput(ctx: IExecuteFunctions, i: number): ContactInput {
@@ -30,6 +30,20 @@ export async function execute(this: IExecuteFunctions, operation: string, i: num
       ? `/contact-lists/${listId}/contacts/sync`
       : `/contact-lists/${listId}/contacts`;
     return unwrap(await cardlyApiRequest.call(this, 'POST', endpoint, body));
+  }
+  if (operation === 'get') {
+    const contactId = this.getNodeParameter('contactId', i) as string;
+    return unwrap(await cardlyApiRequest.call(this, 'GET', `/contact-lists/${listId}/contacts/${contactId}`));
+  }
+  if (operation === 'find') {
+    const query = this.getNodeParameter('query', i) as string;
+    return unwrap(await cardlyApiRequest.call(this, 'GET', `/contact-lists/${listId}/contacts/find`, {}, { query }));
+  }
+  if (operation === 'getMany') {
+    const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+    if (returnAll) return await cardlyApiRequestAllItems.call(this, 'GET', `/contact-lists/${listId}/contacts`, {});
+    const limit = this.getNodeParameter('limit', i) as number;
+    return unwrap(await cardlyApiRequest.call(this, 'GET', `/contact-lists/${listId}/contacts`, {}, { limit }))?.results ?? [];
   }
   throw new NodeOperationError(this.getNode(), `Unknown contact operation: ${operation}`);
 }
