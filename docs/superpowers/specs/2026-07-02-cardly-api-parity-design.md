@@ -14,13 +14,14 @@ preview PDF as binary.
 
 ## Operations added (on top of v0.1.0)
 
-- **Contact** (have: Create, Sync) → add **Update, Delete, Get, Get Many**.
+- **Contact** (have: Create, Sync) → add **Update, Delete, Get, Get Many, Find**.
   - The `listId` field upgrades from a pasted string to a **live dropdown** backed by
     `GET /contact-lists` (still expression-friendly via n8n's `options` type).
   - Endpoints (all confirmed present in the v2 spec): Update
     `POST /contact-lists/{listId}/contacts/{id}` ("Edit Contact"), Delete
     `DELETE /contact-lists/{listId}/contacts/{id}`, Get `GET .../contacts/{id}`, Get Many
-    `GET .../contacts`.
+    `GET .../contacts`, **Find** `GET .../contacts/find?query=` (look up by email/externalId —
+    the required `query` param; high value since users rarely have raw contact UUIDs).
 - **Contact List** *(new resource)* → **Get Many** (`GET /contact-lists`), **Get**
   (`GET /contact-lists/{id}`), **Create** (`POST /contact-lists`), **Delete**
   (`DELETE /contact-lists/{id}`). **No Update operation** — `POST /contact-lists/{id}` does
@@ -40,7 +41,14 @@ preview PDF as binary.
   posts to `/orders/preview` (reusing `buildPreviewBody`), then fetches `preview.urls.card`
   (and `.envelope` when present) **through the authenticated request path**, emitting n8n
   **binary** data.
-- **Account:** unchanged (Get Balance). **Echo:** not included.
+- **Account** (have: Get Balance) → add **Get Credit History** (`GET /account/credit-history`)
+  and **Get Gift Credit History** (`GET /account/gift-credit-history`) — read-only ledger
+  operations (confirm exact paths during planning). **Echo:** not included.
+- **Reference** *(new read-only resource)* → **Get Many** for **Fonts** (`GET /fonts`),
+  **Writing Styles** (`GET /writing-styles`), **Doodles** (`GET /doodles`), **Templates**
+  (`GET /templates`), and **Media/Products** (`GET /media`). Simple list operations that expose
+  the IDs used by order `style`/`template` fields. Exact paths confirmed during planning.
+  (Not auto-wired as order-field dropdowns in this iteration — noted as a future enhancement.)
 
 ## Architectural change — per-resource handler modules
 
@@ -48,7 +56,8 @@ v0.1.0's `Cardly.node.ts` `execute()` is a single `if / else if` chain over ~8 o
 At ~20 operations this becomes an unmaintainable tangle. Refactor:
 
 - New directory `nodes/Cardly/actions/` with one module per resource:
-  `order.ts`, `contact.ts`, `contactList.ts`, `webhook.ts`, `artwork.ts`, `account.ts`.
+  `order.ts`, `contact.ts`, `contactList.ts`, `webhook.ts`, `artwork.ts`, `account.ts`,
+  `reference.ts`.
   Each exports `execute(this: IExecuteFunctions, operation: string, i: number): Promise<HandlerResult>`
   where `HandlerResult = any | INodeExecutionData[]`. A handler returns **either** plain
   (already-unwrapped) data — which the dispatcher wraps as `{ json, pairedItem }` — **or** one
@@ -67,9 +76,10 @@ This is a bounded refactor that serves the expansion, not a rewrite.
 
 ## New / changed components
 
-- **Descriptions:** new `ContactListDescription.ts`, `WebhookDescription.ts`; extend
-  `ContactDescription.ts` (new ops + listId dropdown), `ArtworkDescription.ts` (Get),
-  `OrderDescription.ts` (Download Preview PDF).
+- **Descriptions:** new `ContactListDescription.ts`, `WebhookDescription.ts`,
+  `ReferenceDescription.ts`; extend `ContactDescription.ts` (new ops incl. Find + listId
+  dropdown), `ArtworkDescription.ts` (Get), `OrderDescription.ts` (Download Preview PDF),
+  `AccountDescription.ts` (credit-history ops).
 - **Builders (pure, unit-tested):** new `contactListBuilder.ts` (**create body only** incl.
   `fields[]` — no list-update endpoint exists), `webhookBuilder.ts` (create/update body;
   update mode **requires `targetUrl`** and supports the optional `disabled` flag); extend
@@ -107,9 +117,12 @@ Order recipient/sender use `city`; Contact uses `locality`. The new Contact oper
   contain logic beyond straight request assembly.
 - **Regression:** the existing 42 tests must stay green after the handler refactor.
 - **Live smoke tests (test key):** read ops (contact-list Get Many/Get, contact Get Many/Get,
-  artwork Get, webhook Get Many) hit the real API. Mutating ops (contact/contactList/webhook
-  Create/Update/Delete) are safe to exercise because test keys validate without mutating.
-  Download Preview PDF is exercised by previewing then fetching the returned URL.
+  contact **Find**, artwork Get, webhook Get Many, account **credit-history**, and each
+  **Reference** list — fonts/writing-styles/doodles/templates/media) hit the real API and
+  double as confirmation the endpoints exist and their shapes match. Mutating ops
+  (contact/contactList/webhook Create/Update/Delete) are safe to exercise because test keys
+  validate without mutating. Download Preview PDF is exercised by previewing then fetching the
+  returned URL.
 - **Pagination check:** the new list endpoints (`GET /contact-lists`, `.../contacts`,
   `/webhooks`) return `{meta, results}` but the OpenAPI spec does not declare `limit`/`offset`
   query params on them (only `/art` has `ownOnly`). `cardlyApiRequestAllItems` sends
@@ -127,24 +140,22 @@ All planned endpoints confirmed present **except one**:
 **`POST /contact-lists/{id}` (update list) does NOT exist** → no Contact List Update operation
 (reflected above).
 
+## Scope (confirmed with maintainer)
+
+**In scope:** the core resources (Order incl. Download Preview PDF, Contact full CRUD + Find,
+Contact List Get Many/Get/Create/Delete, Webhook CRUD, Artwork Get Many/Get, Account balance),
+**plus** the confirmed additions: contact **Find**, account **credit-history** reads, and the
+**Reference** read lists (fonts, writing-styles, doodles, templates, media).
+
 ## Out of scope
 
-- **Echo** operation; **Order cancel** (no v2 endpoint).
-- **Additional v2 resources that DO exist but are deferred** (a deliberate scope call, pending
-  maintainer confirmation — see "Scope decision" below): `GET /fonts`, `GET /writing-styles`,
-  `GET /doodles`, `GET /templates`, `GET /media`; artwork write ops (`POST /art`,
-  `POST /art/{id}`, `DELETE /art/{id}`); `GET /account/credit-history` &
-  `/gift-credit-history`; contact `find` (`GET /contact-lists/{listId}/contacts/find`) and
-  delete-by-body (`DELETE /contact-lists/{listId}/contacts`); `/users`, `/invitations`.
-  (Earlier drafts incorrectly claimed fonts/writing-styles had "no list endpoints" — they do;
-  the exclusion is a scope choice, not an API limitation.)
-
-## Scope decision (pending)
-
-Because these additional resources exist, "full API parity" is only fully accurate if they are
-included. This spec's current scope is **core resource coverage** (Order, Contact, Contact
-List, Webhook, Artwork read, Account) — the operations most useful in n8n workflows. Whether to
-also include the deferred read endpoints (fonts/writing-styles/doodles/templates/media/credit
-history + contact `find`) or the write/admin endpoints (artwork upload, users/invitations) is
-a maintainer decision to confirm before planning. Cheap, high-value additions if wanted:
-contact **Find** (users rarely have Cardly contact IDs) and the reference **read** lists.
+- **Echo** operation; **Order cancel** (no v2 endpoint); **Contact List Update**
+  (`POST /contact-lists/{id}` does not exist).
+- **Write/admin endpoints, deferred by maintainer decision:** artwork write ops (`POST /art`,
+  `POST /art/{id}`, `DELETE /art/{id}` — binary upload), `/users`, `/invitations`, and
+  contact delete-by-body (`DELETE /contact-lists/{listId}/contacts`). These exist in the v2
+  API; excluding them is a deliberate scope choice (higher effort/risk, less common in
+  automation), not an API limitation.
+- **Reference lists as order-field dropdowns** (font/writing-style/template loadOptions on the
+  order `style`/`template` fields) — a future enhancement; this iteration exposes them only as
+  standalone Get Many operations.
