@@ -1,4 +1,4 @@
-import { IExecuteFunctions, IDataObject } from 'n8n-workflow';
+import { IExecuteFunctions, IDataObject, NodeOperationError } from 'n8n-workflow';
 import { cardlyApiRequest, cardlyApiRequestAllItems, unwrap } from '../GenericFunctions';
 
 export async function execute(this: IExecuteFunctions, operation: string, i: number): Promise<any> {
@@ -13,5 +13,5 @@ export async function execute(this: IExecuteFunctions, operation: string, i: num
     qs.limit = this.getNodeParameter('limit', i) as number;
     return unwrap(await cardlyApiRequest.call(this, 'GET', '/art', {}, qs))?.results ?? [];
   }
-  throw new Error(`Unknown artwork operation: ${operation}`);
+  throw new NodeOperationError(this.getNode(), `Unknown artwork operation: ${operation}`);
 }

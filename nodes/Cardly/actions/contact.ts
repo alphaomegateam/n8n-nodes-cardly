@@ -1,4 +1,4 @@
-import { IExecuteFunctions } from 'n8n-workflow';
+import { IExecuteFunctions, NodeOperationError } from 'n8n-workflow';
 import { cardlyApiRequest, unwrap } from '../GenericFunctions';
 import { buildContactBody, ContactInput } from '../helpers/contactBuilder';
 
@@ -31,5 +31,5 @@ export async function execute(this: IExecuteFunctions, operation: string, i: num
       : `/contact-lists/${listId}/contacts`;
     return unwrap(await cardlyApiRequest.call(this, 'POST', endpoint, body));
   }
-  throw new Error(`Unknown contact operation: ${operation}`);
+  throw new NodeOperationError(this.getNode(), `Unknown contact operation: ${operation}`);
 }

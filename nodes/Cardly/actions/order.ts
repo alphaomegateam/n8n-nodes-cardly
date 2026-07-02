@@ -1,4 +1,4 @@
-import { IExecuteFunctions } from 'n8n-workflow';
+import { IExecuteFunctions, NodeOperationError } from 'n8n-workflow';
 import { cardlyApiRequest, cardlyApiRequestAllItems, unwrap } from '../GenericFunctions';
 import { buildPlaceBody, buildPreviewBody, OrderLineInput } from '../helpers/orderBuilder';
 
@@ -47,5 +47,5 @@ export async function execute(this: IExecuteFunctions, operation: string, i: num
     const limit = this.getNodeParameter('limit', i) as number;
     return unwrap(await cardlyApiRequest.call(this, 'GET', '/orders', {}, { limit }))?.results ?? [];
   }
-  throw new Error(`Unknown order operation: ${operation}`);
+  throw new NodeOperationError(this.getNode(), `Unknown order operation: ${operation}`);
 }
