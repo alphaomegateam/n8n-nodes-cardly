@@ -17,7 +17,8 @@
   "engines": { "node": ">=18.10" },
   "main": "index.js",
   "scripts": {
-    "build": "tsc && gulp build:icons",
+    "clean": "rm -rf dist",
+    "build": "rm -rf dist && tsc && gulp build:icons",
     "dev": "tsc --watch",
     "lint": "eslint nodes credentials package.json",
     "lintfix": "eslint nodes credentials package.json --fix",
