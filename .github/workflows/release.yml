@@ -1,0 +1,52 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  id-token: write   # OIDC — required for trusted publishing
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    # To add a manual approval gate before publishing, create a GitHub Environment
+    # named "release" with required reviewers, set the same environment name in the
+    # npm trusted-publisher config, then uncomment the next line:
+    # environment: release
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          registry-url: 'https://registry.npmjs.org'
+          package-manager-cache: false
+
+      - run: npm ci
+
+      - name: Assert npm >= 11.5.1 (trusted publishing floor)
+        run: |
+          npm_ver="$(npm --version)"
+          req="11.5.1"
+          if [ "$(printf '%s\n%s\n' "$req" "$npm_ver" | sort -V | head -n1)" != "$req" ]; then
+            echo "npm $npm_ver is below the required $req for trusted publishing" >&2
+            exit 1
+          fi
+          echo "npm $npm_ver satisfies the >= $req floor"
+
+      - name: Verify tag matches package.json version
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          pkg="$(node -p "require('./package.json').version")"
+          if [ "$tag" != "$pkg" ]; then
+            echo "Tag $GITHUB_REF_NAME (version $tag) does not match package.json version $pkg" >&2
+            exit 1
+          fi
+          echo "Tag matches package.json version $pkg"
+
+      - run: npm test
+
+      - run: npm publish
