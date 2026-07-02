@@ -13,8 +13,10 @@ import { accountOperations } from './descriptions/AccountDescription';
 import { artworkOperations, artworkFields } from './descriptions/ArtworkDescription';
 import { orderOperations, orderFields } from './descriptions/OrderDescription';
 import { contactOperations, contactFields } from './descriptions/ContactDescription';
+import { contactListOperations, contactListFields } from './descriptions/ContactListDescription';
 import * as orderActions from './actions/order';
 import * as contactActions from './actions/contact';
+import * as contactListActions from './actions/contactList';
 import * as artworkActions from './actions/artwork';
 import * as accountActions from './actions/account';
 import { NodeItems, ResourceHandler } from './actions/types';
@@ -42,6 +44,7 @@ export class Cardly implements INodeType {
           { name: 'Account', value: 'account' },
           { name: 'Artwork', value: 'artwork' },
           { name: 'Contact', value: 'contact' },
+          { name: 'Contact List', value: 'contactList' },
           { name: 'Order', value: 'order' },
         ],
         default: 'order',
@@ -53,6 +56,8 @@ export class Cardly implements INodeType {
       ...orderFields,
       ...contactOperations,
       ...contactFields,
+      ...contactListOperations,
+      ...contactListFields,
     ],
   };
 
@@ -72,6 +77,7 @@ export class Cardly implements INodeType {
   static RESOURCE_HANDLERS: Record<string, ResourceHandler> = {
     order: orderActions.execute,
     contact: contactActions.execute,
+    contactList: contactListActions.execute,
     artwork: artworkActions.execute,
     account: accountActions.execute,
   };
