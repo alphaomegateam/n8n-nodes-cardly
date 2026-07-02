@@ -9,7 +9,7 @@ import {
 } from 'n8n-workflow';
 
 import { cardlyApiRequestAllItems } from './GenericFunctions';
-import { accountOperations } from './descriptions/AccountDescription';
+import { accountOperations, accountFields } from './descriptions/AccountDescription';
 import { artworkOperations, artworkFields } from './descriptions/ArtworkDescription';
 import { orderOperations, orderFields } from './descriptions/OrderDescription';
 import { contactOperations, contactFields } from './descriptions/ContactDescription';
@@ -53,6 +53,7 @@ export class Cardly implements INodeType {
         default: 'order',
       },
       ...accountOperations,
+      ...accountFields,
       ...artworkOperations,
       ...artworkFields,
       ...orderOperations,
