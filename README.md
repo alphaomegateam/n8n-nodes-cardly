@@ -1,5 +1,7 @@
 # n8n-nodes-cardly
 
+[![CI](https://github.com/alphaomegateam/n8n-nodes-cardly/actions/workflows/ci.yml/badge.svg)](https://github.com/alphaomegateam/n8n-nodes-cardly/actions/workflows/ci.yml)
+
 n8n community node for the [Cardly](https://www.card.ly) API — send physical greeting cards / direct mail, sync contacts, read account data, and react to Cardly webhook events.
 
 ## Installation
@@ -46,3 +48,35 @@ npm run build
 npm run lint
 npm test
 ```
+
+## Releasing (maintainers)
+
+Releases publish to npm automatically via GitHub Actions using **OIDC trusted publishing** —
+no npm token is stored in GitHub.
+
+### One-time setup
+
+1. The GitHub repository must be **public** (required for automatic build provenance).
+2. On npmjs.com → the `@alphaomega-team/n8n-nodes-cardly` package → **Settings → Trusted Publisher**,
+   add a GitHub Actions publisher:
+   - Organization/user: `alphaomegateam`
+   - Repository: `n8n-nodes-cardly`
+   - Workflow filename: `release.yml`
+   - Allow: `npm publish`
+
+   (CLI equivalent: `npm trust github @alphaomega-team/n8n-nodes-cardly --repo alphaomegateam/n8n-nodes-cardly --file release.yml --allow-publish`.)
+3. (Recommended) Protect `main`: require the `CI` checks to pass and disallow force-pushes.
+
+### Cutting a release
+
+```bash
+npm version patch        # or minor / major — bumps package.json, commits, and tags vX.Y.Z
+git push --follow-tags   # pushes the commit and the tag
+```
+
+The tag push triggers `release.yml`, which verifies the tag matches `package.json`, runs the
+tests, and publishes. **Do not push pre-release tags** (e.g. `v1.0.0-beta.1`) — they would
+publish to the `latest` dist-tag.
+
+An optional manual approval gate before each publish is available by enabling a `release`
+GitHub Environment (see the commented `environment:` line in `release.yml`).
