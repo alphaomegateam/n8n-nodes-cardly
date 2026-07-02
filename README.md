@@ -27,10 +27,13 @@ Create a **Cardly API** credential with your API key (Cardly portal → API keys
 ## Nodes
 
 ### Cardly (action)
-- **Order** — Place, Preview, Get, Get Many
-- **Contact** — Create, Sync (into a contact list; supply the list ID from the portal)
-- **Artwork** — Get Many
-- **Account** — Get Balance
+- **Order** — Place, Preview, Get, Get Many, Download Preview PDF
+- **Contact** — Create, Sync, Update, Delete, Get, Get Many, Find (into a contact list; pick the list from the dropdown)
+- **Contact List** — Get Many, Get, Create, Delete
+- **Webhook** — Get Many, Get, Create, Update, Delete
+- **Artwork** — Get Many, Get
+- **Reference** — Get Many for Fonts, Writing Styles, Doodles, Templates, Media
+- **Account** — Get Balance, Get Credit History, Get Gift Credit History
 
 Cards are sent one recipient per input item; use previous nodes to fan out to multiple recipients.
 
