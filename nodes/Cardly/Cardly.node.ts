@@ -11,15 +11,17 @@ import {
 import { cardlyApiRequestAllItems } from './GenericFunctions';
 import { accountOperations, accountFields } from './descriptions/AccountDescription';
 import { artworkOperations, artworkFields } from './descriptions/ArtworkDescription';
-import { orderOperations, orderFields } from './descriptions/OrderDescription';
 import { contactOperations, contactFields } from './descriptions/ContactDescription';
 import { contactListOperations, contactListFields } from './descriptions/ContactListDescription';
+import { orderOperations, orderFields } from './descriptions/OrderDescription';
+import { referenceOperations, referenceFields } from './descriptions/ReferenceDescription';
 import { webhookOperations, webhookFields } from './descriptions/WebhookDescription';
-import * as orderActions from './actions/order';
+import * as accountActions from './actions/account';
+import * as artworkActions from './actions/artwork';
 import * as contactActions from './actions/contact';
 import * as contactListActions from './actions/contactList';
-import * as artworkActions from './actions/artwork';
-import * as accountActions from './actions/account';
+import * as orderActions from './actions/order';
+import * as referenceActions from './actions/reference';
 import * as webhookActions from './actions/webhook';
 import { NodeItems, ResourceHandler } from './actions/types';
 
@@ -48,6 +50,7 @@ export class Cardly implements INodeType {
           { name: 'Contact', value: 'contact' },
           { name: 'Contact List', value: 'contactList' },
           { name: 'Order', value: 'order' },
+          { name: 'Reference', value: 'reference' },
           { name: 'Webhook', value: 'webhook' },
         ],
         default: 'order',
@@ -56,12 +59,14 @@ export class Cardly implements INodeType {
       ...accountFields,
       ...artworkOperations,
       ...artworkFields,
-      ...orderOperations,
-      ...orderFields,
       ...contactOperations,
       ...contactFields,
       ...contactListOperations,
       ...contactListFields,
+      ...orderOperations,
+      ...orderFields,
+      ...referenceOperations,
+      ...referenceFields,
       ...webhookOperations,
       ...webhookFields,
     ],
@@ -81,11 +86,12 @@ export class Cardly implements INodeType {
   };
 
   static RESOURCE_HANDLERS: Record<string, ResourceHandler> = {
-    order: orderActions.execute,
+    account: accountActions.execute,
+    artwork: artworkActions.execute,
     contact: contactActions.execute,
     contactList: contactListActions.execute,
-    artwork: artworkActions.execute,
-    account: accountActions.execute,
+    order: orderActions.execute,
+    reference: referenceActions.execute,
     webhook: webhookActions.execute,
   };
 
