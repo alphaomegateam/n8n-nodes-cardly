@@ -6,11 +6,11 @@ n8n community node for the [Cardly](https://www.card.ly) API — send physical g
 
 ## Installation
 
-In n8n: **Settings → Community Nodes → Install**, enter `@alphaomega-team/n8n-nodes-cardly`.
+In n8n: **Settings → Community Nodes → Install**, enter `n8n-nodes-cardly`.
 
 Or self-hosted CLI (into your n8n custom nodes folder, e.g. `~/.n8n/nodes`):
 ```bash
-npm install @alphaomega-team/n8n-nodes-cardly
+npm install n8n-nodes-cardly
 ```
 
 Self-hosted without publishing to npm — install straight from the repo or a local build:
@@ -60,14 +60,14 @@ no npm token is stored in GitHub.
 ### One-time setup
 
 1. The GitHub repository must be **public** (required for automatic build provenance).
-2. On npmjs.com → the `@alphaomega-team/n8n-nodes-cardly` package → **Settings → Trusted Publisher**,
+2. On npmjs.com → the `n8n-nodes-cardly` package → **Settings → Trusted Publisher**,
    add a GitHub Actions publisher:
    - Organization/user: `alphaomegateam`
    - Repository: `n8n-nodes-cardly`
    - Workflow filename: `release.yml`
    - Allow: `npm publish`
 
-   (CLI equivalent: `npm trust github @alphaomega-team/n8n-nodes-cardly --repo alphaomegateam/n8n-nodes-cardly --file release.yml --allow-publish`.)
+   (CLI equivalent: `npm trust github n8n-nodes-cardly --repo alphaomegateam/n8n-nodes-cardly --file release.yml --allow-publish`.)
 3. (Recommended) Protect `main`: require the `CI` checks to pass and disallow force-pushes.
 
 ### Cutting a release
