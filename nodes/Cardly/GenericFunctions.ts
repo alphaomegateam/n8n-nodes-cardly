@@ -83,18 +83,27 @@ export async function cardlyApiRequestAllItems(
   qs: IDataObject = {},
 ): Promise<any[]> {
   const results: any[] = [];
-  let offset = 0;
+  let page = 1;
   const limit = (qs.limit as number) || 100;
 
+  // Cardly paginates by `page`, NOT `offset`. Their docs (api.card.ly/v2/docs)
+  // say to walk lists by incrementing `offset` — that is WRONG: `offset` is a
+  // read-only *response* field ((page-1) * limit) and is ignored as a request
+  // param, so sending it always returns page 1. Do not "fix" this back to offset.
   // eslint-disable-next-line no-constant-condition
   while (true) {
-    const response = await cardlyApiRequest.call(this, method, endpoint, {}, { ...qs, limit, offset });
+    const response = await cardlyApiRequest.call(this, method, endpoint, {}, { ...qs, limit, page });
     const data = unwrap(response);
-    const page: any[] = data?.results ?? [];
-    results.push(...page);
-    const total: number = data?.meta?.totalRecords ?? data?.totalRecords ?? results.length;
-    offset += limit;
-    if (page.length === 0 || results.length >= total) break;
+    const pageResults: any[] = data?.results ?? [];
+    if (pageResults.length === 0) break;
+    results.push(...pageResults);
+
+    const meta = data?.meta;
+    const lastRecord: number | undefined = meta?.lastRecord;
+    const totalRecords: number | undefined = meta?.totalRecords ?? data?.totalRecords;
+    if (lastRecord != null && totalRecords != null && lastRecord >= totalRecords) break;
+    if (pageResults.length < limit) break;
+    page += 1;
   }
 
   return results;
