@@ -21,30 +21,86 @@ export function unwrap(response: any): any {
   return response;
 }
 
-export function mapCardlyError(this: { getNode: () => any }, error: any): Error {
-  const status = error.statusCode ?? error.httpCode;
-  const body = error.response?.body ?? error.error ?? {};
-  const messages: string[] = body?.state?.messages ?? [];
+// httpRequestWithAuthentication usually throws an error that is ALREADY a NodeApiError, and the
+// NodeApiError constructor returns an existing NodeApiError unchanged — so `new NodeApiError(node,
+// error, { message })` would silently keep n8n's generic per-status text. Rewrite it in place instead.
+// Duck-typed too, in case the community package resolves its own copy of n8n-workflow.
+function withMessage(
+  node: any,
+  error: any,
+  opts: { message: string; description?: string },
+): Error {
+  if (error instanceof NodeApiError || error?.name === 'NodeApiError') {
+    error.message = opts.message;
+    if (opts.description) error.description = opts.description;
+    return error;
+  }
+  return new NodeApiError(node, error, opts);
+}
 
-  if (status === 402) {
+export function mapCardlyError(this: { getNode: () => any }, error: any): Error {
+  // n8n surfaces a failed HTTP response in several shapes depending on version and
+  // code path: n8n's older shape (error.statusCode / error.response.body), the
+  // axios shape (error.response.status / error.response.data), a NodeApiError that
+  // n8n-core already built (httpCode / context.data), or a wrapped error whose
+  // original response lives under error.cause. The Cardly envelope
+  // ({ state: { messages }, data }) and the status must be read defensively from
+  // all of them — otherwise a real 401/404/422 collapses into a generic message
+  // with no status and no field detail (which is exactly what happened in prod:
+  // the node reported "invalid or could not be processed" for every failure).
+  const status =
+    error?.statusCode ??
+    error?.httpCode ??
+    error?.response?.status ??
+    error?.response?.statusCode ??
+    error?.cause?.response?.status ??
+    error?.cause?.statusCode;
+
+  const parseMaybe = (b: any): any => {
+    if (typeof b !== 'string') return b;
+    try {
+      return JSON.parse(b);
+    } catch {
+      return { state: { messages: [b] } };
+    }
+  };
+
+  const body =
+    parseMaybe(
+      error?.response?.body ??
+        error?.response?.data ??
+        error?.cause?.response?.data ??
+        error?.cause?.response?.body ??
+        error?.error ??
+        error?.context?.data,
+    ) ?? {};
+
+  const messages: string[] = Array.isArray(body?.state?.messages) ? body.state.messages : [];
+  const statusStr = status != null ? String(status) : '';
+
+  if (statusStr === '402') {
     const detail = messages.join(' ') || 'Your account requires additional credit to place this order.';
-    return new NodeApiError(this.getNode(), error, {
+    return withMessage(this.getNode(), error, {
       message: `Insufficient credit: ${detail}`,
       description: 'Add credit to your Cardly account or use a smaller order.',
     });
   }
 
-  if (status === 422 && body?.data && typeof body.data === 'object') {
-    const fields = Object.entries(body.data as IDataObject)
+  const fieldData =
+    body?.data && typeof body.data === 'object' && !Array.isArray(body.data) ? (body.data as IDataObject) : {};
+  if (Object.keys(fieldData).length > 0) {
+    const fields = Object.entries(fieldData)
       .map(([field, reason]) => `${field}: ${reason}`)
       .join('; ');
-    return new NodeApiError(this.getNode(), error, {
+    return withMessage(this.getNode(), error, {
       message: `Validation failed — ${fields}`,
     });
   }
 
-  return new NodeApiError(this.getNode(), error, {
-    message: messages.join(' ') || undefined,
+  const detail =
+    messages.join(' ') || (typeof error?.message === 'string' ? error.message : '') || 'Unknown Cardly error';
+  return withMessage(this.getNode(), error, {
+    message: statusStr ? `Cardly request failed (HTTP ${statusStr}): ${detail}` : detail,
   });
 }
 

@@ -1,3 +1,4 @@
+import { NodeApiError } from 'n8n-workflow';
 import {
   unwrap,
   mapCardlyError,
@@ -29,6 +30,70 @@ describe('mapCardlyError', () => {
     };
     const mapped = mapCardlyError.call(ctx, err);
     expect(mapped.message).toMatch(/email/);
+  });
+
+  // Regression: n8n's httpRequestWithAuthentication throws the axios shape
+  // (response.status / response.data), NOT the older statusCode / response.body
+  // shape the earlier tests mocked. mapCardlyError must read both, or every real
+  // failure collapses to a generic message with no status/detail.
+  it('reads the axios error shape (response.status / response.data)', () => {
+    const err: any = {
+      response: {
+        status: 401,
+        data: { state: { messages: ['Authentication failed: Invalid API-Key header supplied.'] } },
+      },
+    };
+    const mapped = mapCardlyError.call(ctx, err);
+    expect(mapped.message).toMatch(/Authentication failed/);
+    expect(mapped.message).toMatch(/401/);
+  });
+
+  it('surfaces field validation from the axios shape regardless of status field name', () => {
+    const err: any = {
+      response: { status: 422, data: { data: { 'recipient.postcode': 'This value is required.' } } },
+    };
+    const mapped = mapCardlyError.call(ctx, err);
+    expect(mapped.message).toMatch(/recipient\.postcode/);
+  });
+
+  it('falls back to a status-bearing message when no Cardly envelope is present', () => {
+    const err: any = { response: { status: 404 }, message: 'Not Found' };
+    const mapped = mapCardlyError.call(ctx, err);
+    expect(mapped.message).toMatch(/404/);
+  });
+});
+
+describe('mapCardlyError with an error n8n-core already wrapped', () => {
+  // In production, httpRequestWithAuthentication throws a NodeApiError (with the axios
+  // response body in context.data) BEFORE mapCardlyError sees it. The NodeApiError
+  // constructor returns an existing NodeApiError unchanged, so building a new one with a
+  // custom message silently keeps n8n's generic "Your request is invalid..." text.
+  const node = { name: 'Cardly', type: 'cardly', typeVersion: 1, position: [0, 0], parameters: {} } as any;
+  const ctx = { getNode: () => node } as any;
+  const wrap = (status: number, data: any) =>
+    new NodeApiError(node, {
+      message: `Request failed with status code ${status}`,
+      response: { status, data },
+    } as any);
+
+  it('surfaces 422 field detail', () => {
+    const mapped = mapCardlyError.call(
+      ctx,
+      wrap(422, {
+        state: { messages: ['One or more of your request parameters failed validation.'] },
+        data: { 'variables.contractorName': 'This value is required.' },
+      }),
+    );
+    expect(mapped.message).toMatch(/variables\.contractorName: This value is required/);
+  });
+
+  it('surfaces the status and Cardly message when there is no field detail', () => {
+    const mapped = mapCardlyError.call(
+      ctx,
+      wrap(404, { state: { messages: ['The requested artwork could not be found.'] } }),
+    );
+    expect(mapped.message).toMatch(/404/);
+    expect(mapped.message).toMatch(/artwork could not be found/);
   });
 });
 
